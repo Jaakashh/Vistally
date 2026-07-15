@@ -30,6 +30,7 @@
         return (da ? da.getTime() : 0) - (db ? db.getTime() : 0);
       });
 
+    const userName = appState.profile ? appState.profile.full_name : '';
     let yearOptions = "";
     const currentYear = new Date().getFullYear();
     for (let y = currentYear - 2; y <= currentYear + 2; y++) {
@@ -43,7 +44,7 @@
     return `
       <div class="d-flex flex-wrap justify-content-between align-items-end mb-2 gap-2">
         <div>
-          <div class="page-title">Dashboard</div>
+          <div class="page-title">Welcome, ${escapeHtml(userName.split(' ')[0]) || 'User'}!</div>
           <div class="page-sub">Your visit activity at a glance.</div>
         </div>
         <div class="d-flex gap-2">
@@ -878,6 +879,13 @@
       </div>
 
       <div class="card-v mt-3">
+        <h6>Session Management</h6>
+        <p class="" style="font-size: .9rem;">Sign out of your current session.</p>
+        <button class="btn btn-outline-secondary mt-2" onclick="executeLogout()">
+          <i class="bi bi-box-arrow-left me-2"></i>Logout
+        </button>
+      </div>
+      <div class="card-v mt-3">
         <h6>Application Preferences</h6>
         <div class="row g-3 mt-1">
           <div class="col-md-4">
@@ -950,6 +958,15 @@
 
     showToast("Preferences saved successfully!", "success");
     revertButtonLoadingState(button);
+  }
+
+  async function executeLogout() {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+      showToast(`Error logging out: ${error.message}`, 'error');
+    } else {
+      window.location.href = 'Login.html';
+    }
   }
 
   function clearAllApplicationData() {

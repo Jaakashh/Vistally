@@ -42,7 +42,10 @@
   <div class="main">
     <div class="mobile-topbar">
       <div class="brand" style="margin:0; font-size:1.1rem;"><span class="dot"></span> Vistally</div>
-      <button class="btn btn-ghost btn-sm" onclick="openSidebar()"><i class="bi bi-list"></i></button>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-ghost btn-sm" onclick="window.location.reload()" title="Reload Application"><i class="bi bi-arrow-clockwise"></i></button>
+        <button class="btn btn-ghost btn-sm" onclick="openSidebar()"><i class="bi bi-list"></i></button>
+      </div>
     </div>
 
     <div id="page-root"></div>
