@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vistally — Visit Planning</title>
+  <!-- Bootstrap & Icons -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link href="css/style.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- PDF Export Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+  <!-- Sidebar Navigation -->
+  <nav class="sidebar" id="sidebar">
+    <div class="brand"><span class="dot"></span> Vistally</div>
+
+    <div class="nav-item active" data-page="dashboard" onclick="navigateToPage('dashboard')"><i class="bi bi-grid-1x2"></i> Dashboard</div>
+    <div class="nav-item" data-page="visits" onclick="navigateToPage('visits')"><i class="bi bi-signpost-split"></i> All Visits</div>
+    <div class="nav-item" data-page="reports" onclick="navigateToPage('reports')"><i class="bi bi-bar-chart-line"></i> Reports</div>
+
+    <div class="nav-section-label">Masters</div>
+    <div class="nav-item" data-page="visitType" onclick="navigateToPage('visitType')"><i class="bi bi-tags"></i> Visit Type Master</div>
+    <div class="nav-item" data-page="visitPurpose" onclick="navigateToPage('visitPurpose')"><i class="bi bi-bullseye"></i> Visit Purpose</div>
+    <div class="nav-item" data-page="expenseType" onclick="navigateToPage('expenseType')"><i class="bi bi-receipt"></i> Expense Type</div>
+
+    <div class="nav-section-label">Account</div>
+    <div class="nav-item" data-page="settings" onclick="navigateToPage('settings')"><i class="bi bi-gear"></i> Settings</div>
+  </nav>
+
+  <!-- Main Content Area -->
+  <div class="main">
+    <div class="mobile-topbar">
+      <div class="brand" style="margin:0; font-size:1.1rem;"><span class="dot"></span> Vistally</div>
+      <button class="btn btn-ghost btn-sm" onclick="openSidebar()"><i class="bi bi-list"></i></button>
+    </div>
+
+    <div id="page-root"></div>
+  </div>
+
+  <!-- Right Side Drawer -->
+  <div class="overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+  <div class="day-drawer" id="sideDrawer">
+    <div class="day-drawer-header">
+      <div>
+        <div class="" id="sideDrawerEyebrow" style="font-size:.75rem; text-transform:uppercase; letter-spacing:1px;">Visits On</div>
+        <div id="sideDrawerTitle" class="fw-semibold" style="font-size:1.15rem;"></div>
+      </div>
+      <button class="btn btn-ghost btn-sm-icon" onclick="closeDrawer()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="day-drawer-body" id="sideDrawerBody"></div>
+    <div class="day-drawer-footer" id="sideDrawerFooter"></div>
+  </div>
+
+  <!-- Floating Action Button -->
+  <button class="fab" onclick="openVisitModal()"><i class="bi bi-plus-lg"></i> Plan Visit</button>
+
+  <!-- Modals Holder -->
+  <div id="modals-container"></div>
+
+  <!-- Toast Notifications Container -->
+  <div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1090;"></div>
+
+  <!-- Core Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Modular Scripts -->
+  <script src="js/supabase.js"></script>
+  <script src="js/ui_helpers.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/modals.js"></script>
+  <script src="js/modules.js"></script>
+  <script src="js/router.js"></script>
+</body>
+</html>
