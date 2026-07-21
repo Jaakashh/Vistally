@@ -545,54 +545,34 @@
     const title = 'Confirm Visit Deletion';
     const body = 'This will permanently remove the visit and <strong>all its associated expenses</strong>. This action cannot be undone.';
 
-    const onConfirm = () => {
+    const onConfirm = async () => {
       confirmationModalBootstrapInstance.hide();
 
       const visitIndex = appState.visits.findIndex(v => v.id === id);
-      if (visitIndex === -1) return;
-
-      // Find and store associated expenses before deletion
-      const expensesToDelete = appState.expenses.filter(e => e.visit_id === id);
-      const expenseIndices = expensesToDelete.map(exp => appState.expenses.findIndex(e => e.id === exp.id));
+      if (visitIndex === -1) {
+        showToast('Visit not found in local state.', 'error');
+        return;
+      }
 
       const visitToDelete = appState.visits[visitIndex];
+      const expensesToDelete = appState.expenses.filter(e => e.visit_id === id);
+
+      const { error: expenseError } = await supabaseClient.from('expenses').delete().eq('visit_id', id);
+      if (expenseError) {
+        showToast(`Error deleting associated expenses: ${expenseError.message}`, 'error');
+        return;
+      }
+
+      const { error: visitError } = await supabaseClient.from('visits').delete().eq('id', id);
+      if (visitError) {
+        showToast(`Error deleting visit: ${visitError.message}`, 'error');
+        return;
+      }
+
       appState.visits.splice(visitIndex, 1);
-      appState.expenses = appState.expenses.filter(e => e.visit_id !== id); // Also remove from local state
+      appState.expenses = appState.expenses.filter(e => e.visit_id !== id);
       renderActiveView();
-
-      const deleteTimeout = setTimeout(async () => {
-        // First, delete all associated expenses.
-        const { error: expenseError } = await supabaseClient.from('expenses').delete().eq('visit_id', id);
-        if (expenseError) {
-          showToast(`Error deleting associated expenses: ${expenseError.message}`, 'error');
-          appState.visits.splice(visitIndex, 0, visitToDelete); // Restore on failure
-          // Restore expenses on failure
-          expenseIndices.forEach((idx, i) => appState.expenses.splice(idx, 0, expensesToDelete[i]));
-          renderActiveView();
-          return;
-        }
-        // Then, delete the visit itself.
-        const { error: visitError } = await supabaseClient.from('visits').delete().eq('id', id);
-        if (visitError) {
-          showToast(`Error deleting visit: ${visitError.message}`, 'error');
-          // If deletion fails, put it back
-          appState.visits.splice(visitIndex, 0, visitToDelete);
-          // Also restore expenses if visit deletion fails after expenses were deleted
-          expenseIndices.forEach((idx, i) => appState.expenses.splice(idx, 0, expensesToDelete[i]));
-          renderActiveView();
-        }
-      }, appState.undoTimeout);
-
-      showToast("Visit deleted.", "success", {
-        label: "Undo",
-        callback: () => {
-          clearTimeout(deleteTimeout);
-          appState.visits.splice(visitIndex, 0, visitToDelete);
-          // Also restore expenses on undo
-          expenseIndices.forEach((idx, i) => appState.expenses.splice(idx, 0, expensesToDelete[i]));
-          renderActiveView();
-        }
-      });
+      showToast('Visit deleted successfully.', 'success');
     };
 
     openConfirmationModal(title, body, onConfirm);
@@ -685,7 +665,7 @@
       ]);
     } else { // expense tab
       reportType = 'Expense_Centric';
-      headers = ["Date", "Expense Category", "Amount (INR)", "Associated Client", "Associated Company"];
+      headers = ["Date", "Expense Category", "Amount (INR)", "Associated Client", "Associated Company", "Receipt Link"];
       const filteredExpenses = appState.expenses.filter(e => isBetween(e.date, from, to));
       rows = filteredExpenses.map(e => {
         const parentVisit = appState.visits.find(v => v.id === e.visit_id);
@@ -694,7 +674,8 @@
           lookupMasterName(appState.expenseTypes, e.expense_type_id),
           e.amount,
           parentVisit ? parentVisit.client_name : "N/A",
-          parentVisit ? parentVisit.company_name : "N/A"
+          parentVisit ? parentVisit.company_name : "N/A",
+          e.receipt_url || ""
         ];
       });
     }
@@ -712,7 +693,7 @@
       </div> 
         ${visits.length ? `
           
-        <div class="table-responsive">
+        <div class="table-responsive" style="border-radius: 10px;">
         
           <table class="table table-v mb-0" style="font-size: .9rem;">
             <thead>
@@ -754,14 +735,16 @@
       </div> 
         ${expenses.length ? `
          
-        <div class="table-responsive">
+        <div class="table-responsive" style="border-radius: 10px;">
           <table class="table table-v mb-0" style="font-size: .9rem;">
             <thead>
-              <tr>
+            <tr>
                 <th>Expense Category</th>
                 <th>Date Incurred</th>
                 <th>Associated Client</th>
+                <th>Receipt</th>
                 <th class="text-end">Total Expanse</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -769,12 +752,15 @@
                 const cat = lookupMasterName(appState.expenseTypes, e.expense_type_id);
                 const parentVisit = appState.visits.find(v => v.id === e.visit_id);
                 const clientAnchor = parentVisit ? `${parentVisit.client_name} (${parentVisit.company_name})` : "Standalone Registry";
+                const receiptLink = e.receipt_url ? `<a href="${escapeHtml(e.receipt_url)}" target="_blank" rel="noopener noreferrer">Link</a>` : '—';
                 return `
                   <tr>
                     <td>${escapeHtml(cat || "—")}</td>
                     <td class="mono">${formatDisplayDate(e.date)}</td>
                     <td>${escapeHtml(clientAnchor)}</td>
+                    <td>${receiptLink}</td>
                     <td class="mono text-end" style="color: var(--coral);">₹${Number(e.amount).toLocaleString('en-IN')}</td>
+                    <td><button class="btn btn-ghost btn-sm" onclick="viewExpenseEntryDetails('${e.id}')">View</button></td>
                   </tr>`;
               }).join("")}
             </tbody>
@@ -820,35 +806,25 @@
     const title = 'Confirm Master Item Deletion';
     const body = 'Deleting this master item may affect historical records that use it. Are you sure you want to proceed?';
 
-    const onConfirm = () => {
+    const onConfirm = async () => {
       confirmationModalBootstrapInstance.hide();
 
-      // Convert snake_case (e.g., 'visit_types') to camelCase (e.g., 'visitTypes')
       const appStateKey = stateKey.replace(/_(\w)/g, (match, p1) => p1.toUpperCase());
       const itemIndex = appState[appStateKey].findIndex(i => i.id === id);
-      if (itemIndex === -1) return;
+      if (itemIndex === -1) {
+        showToast('Item not found in local state.', 'error');
+        return;
+      }
 
-      const itemToDelete = appState[appStateKey][itemIndex];
+      const { error } = await supabaseClient.from(stateKey).delete().eq('id', id);
+      if (error) {
+        showToast(`Error deleting item: ${error.message}`, 'error');
+        return;
+      }
+
       appState[appStateKey].splice(itemIndex, 1);
       renderActiveView();
-
-      const deleteTimeout = setTimeout(async () => {
-        const { error } = await supabaseClient.from(stateKey).delete().eq('id', id);
-        if (error) {
-          showToast(`Error deleting item: ${error.message}`, 'error');
-          appState[appStateKey].splice(itemIndex, 0, itemToDelete);
-          renderActiveView();
-        }
-      }, appState.undoTimeout);
-
-      showToast("Item deleted.", "success", {
-        label: "Undo",
-        callback: () => {
-          clearTimeout(deleteTimeout);
-          appState[appStateKey].splice(itemIndex, 0, itemToDelete);
-          renderActiveView();
-        }
-      });
+      showToast('Item deleted successfully.', 'success');
     };
     openConfirmationModal(title, body, onConfirm);
   }

@@ -103,7 +103,7 @@ function handleRealtimeChange(payload, tableName) {
   }
 }
 
-function initializeRealtimeSubscriptions() {
+async function initializeRealtimeSubscriptions() {
   const channel = supabaseClient.channel('public-changes');
 
   const tablesToWatch = ['visits', 'expenses', 'visit_types', 'visit_purposes', 'expense_types'];
@@ -118,7 +118,12 @@ function initializeRealtimeSubscriptions() {
     });
   });
 
-  channel.subscribe();
+  try {
+    await channel.subscribe();
+    console.log('Realtime subscriptions initialized.');
+  } catch (error) {
+    console.error('Failed to initialize realtime subscriptions:', error);
+  }
 }
 
 // App Initialization
